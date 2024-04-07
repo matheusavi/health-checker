@@ -17,8 +17,17 @@ async fn main() {
         .expect("Program was not able to locate backup_path key")
         .clone();
 
+    //make a foreach with the multiple URLs, verify each one every 5 min
+
     tokio::spawn(async move {
         loop {
+            let res = reqwest::get("http://localhost:5121/health").await.unwrap();
+            println!("Status: {}", res.status());
+            println!("Headers:\n{:#?}", res.headers());
+
+            let body = res.text().await.unwrap();
+            println!("Body:\n{}", body);
+
             let now = Local::now().naive_local();
             let next_backup_time = if now.hour() >= BACKUP_TIME {
                 println!("It's past {BACKUP_TIME}, checking if the database was backed up");
