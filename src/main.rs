@@ -1,11 +1,13 @@
 use chrono::{Local, Timelike};
 use config::{Config, ConfigError};
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 use tokio::time::sleep;
 mod check_backup;
+mod check_health;
 
 const SETTINGS_FILE: &str = "./Settings";
 const BACKUP_KEY: &str = "backup_path";
+const HEALTHCHECK_KEY: &str = "healthcheck_urls";
 const BACKUP_TIME: u32 = 5;
 
 #[tokio::main]
@@ -13,21 +15,37 @@ async fn main() {
     let config = get_config().expect("Program was not able to locate config file");
 
     let backup_path = config
-        .get(BACKUP_KEY)
-        .expect("Program was not able to locate backup_path key")
+        .get_string(BACKUP_KEY)
+        .expect("Program was not able to locate BACKUP_KEY key")
         .clone();
 
-    //make a foreach with the multiple URLs, verify each one every 5 min
+    let health_urls = config
+        .get_array(HEALTHCHECK_KEY)
+        .expect("Program was not able to locate HEALTHCHECK_KEY key")
+        .clone();
+
+    for url in health_urls {
+        let url = url
+            .clone()
+            .into_string()
+            .expect("Failed to parse {url} for healthcheck");
+
+        tokio::spawn(async move {
+            loop {
+                let result = check_health::get(&url).await;
+
+                match result {
+                    Ok(_) => println!("{url} healthy"),
+                    Err(error) => println!("{url} unhealthy {:?}", error),
+                }
+
+                sleep(Duration::from_secs(5 * 60)).await;
+            }
+        });
+    }
 
     tokio::spawn(async move {
         loop {
-            let res = reqwest::get("http://localhost:5121/health").await.unwrap();
-            println!("Status: {}", res.status());
-            println!("Headers:\n{:#?}", res.headers());
-
-            let body = res.text().await.unwrap();
-            println!("Body:\n{}", body);
-
             let now = Local::now().naive_local();
             let next_backup_time = if now.hour() >= BACKUP_TIME {
                 println!("It's past {BACKUP_TIME}, checking if the database was backed up");
@@ -51,14 +69,16 @@ async fn main() {
 
             sleep(sleep_duration).await;
         }
-    })
-    .await
-    .expect("Failed to verify the backup");
+    });
+
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to listen to ctrl+c");
+    println!("Terminating application")
 }
 
-fn get_config() -> Result<HashMap<String, String>, ConfigError> {
+fn get_config() -> Result<Config, ConfigError> {
     Config::builder()
         .add_source(config::File::with_name(SETTINGS_FILE))
-        .build()?
-        .try_deserialize::<HashMap<String, String>>()
+        .build()
 }

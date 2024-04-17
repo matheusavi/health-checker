@@ -1,1 +1,2 @@
 backup_path = "."
+healthcheck_urls = ["http://localhost:5121/health", "http://localhost:5231/health"]
