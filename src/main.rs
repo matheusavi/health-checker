@@ -71,10 +71,27 @@ async fn main() {
         }
     });
 
-    tokio::signal::ctrl_c()
-        .await
-        .expect("Failed to listen to ctrl+c");
-    println!("Terminating application")
+    handle_termination().await;
+}
+
+#[cfg(unix)]
+async fn handle_termination() {
+    use tokio::signal::unix::{signal, SignalKind};
+
+    let mut sigint = signal(SignalKind::interrupt()).expect("Failed to set up SIGINT handler");
+    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to set up SIGTERM handler");
+
+    tokio::select! {
+        _ = sigint.recv() => println!("Received SIGINT"),
+        _ = sigterm.recv() => println!("Received SIGTERM"),
+    }
+    println!("Terminating application");
+}
+
+#[cfg(windows)]
+async fn handle_termination() {
+    tokio::signal::ctrl_c().await.expect("Failed to listen to ctrl+c");
+    println!("Terminating application");
 }
 
 fn get_config() -> Result<Config, ConfigError> {
