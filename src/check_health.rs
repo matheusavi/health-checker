@@ -1,4 +1,4 @@
-pub async fn get(url: &str) -> Result<bool, String> {
+pub(crate) async fn get(url: &str) -> Result<bool, String> {
     let response = reqwest::get(url).await;
 
     let response = match response {

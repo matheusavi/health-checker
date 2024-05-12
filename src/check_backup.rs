@@ -5,7 +5,7 @@ use std::{
 
 use chrono::{DateTime, Local};
 
-pub fn backup_done_today(backup_dir: &str) -> bool {
+pub(crate) fn backup_done_today(backup_dir: &str) -> bool {
     match get_newer_file_in_directory(&backup_dir) {
         Ok(file) => {
             let creation_date = match get_file_modification_time(&file) {
