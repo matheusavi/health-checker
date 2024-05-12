@@ -1,2 +1,4 @@
 backup_path = "."
 healthcheck_urls = ["http://localhost:5121/health", "http://localhost:5231/health"]
+discord_token = "EXAMPLEDISCORDTOKEN"
+discord_channel = 12345678901234567890
