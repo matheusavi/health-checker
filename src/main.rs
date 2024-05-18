@@ -78,7 +78,7 @@ async fn main() {
             let next_backup_time = if now.hour() >= BACKUP_TIME {
                 println!("It's past {BACKUP_TIME}, checking if the database was backed up");
                 let backup_done_today = check_backup::backup_done_today(&backup_path);
-                if backup_done_today {
+                if !backup_done_today {
                     let message = "The database was not backed up today.";
                     println!("{}", message);
                     discord.send_discord_message(message).await;
